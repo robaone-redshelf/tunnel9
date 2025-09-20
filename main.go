@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"tunnel9/internal/config"
@@ -19,12 +20,13 @@ const USAGE_CONTENT string = `tunnel9 - SSH Tunnel Manager
 Version: %s
 
 Usage:
-  tunnel9 [--config=<path>]
+  tunnel9 [--config=<path>] [--auto-start=<tags>]
   tunnel9 -h | --help
 
 Options:
   -h --help        Show this screen.
-  --config=<path>  Path to config file [default: ~/.local/state/tunnel9/config.yaml]`
+  --config=<path>  Path to config file [default: ~/.local/state/tunnel9/config.yaml]
+  --auto-start=<tags>  Comma-separated list of tags to auto-start (use "all" for every tunnel)`
 
 func main() {
 	usage := fmt.Sprintf(USAGE_CONTENT, VERSION)
@@ -56,7 +58,22 @@ func main() {
 		time.Sleep(2 * time.Second)
 	}
 
-	app := ui.NewApp(loader, tunnels)
+	autoStartRaw := ""
+	if raw, ok := opts["--auto-start"].(string); ok {
+		autoStartRaw = raw
+	}
+
+	var autoStartTags []string
+	if autoStartRaw != "" {
+		for _, tag := range strings.Split(autoStartRaw, ",") {
+			trimmed := strings.TrimSpace(tag)
+			if trimmed != "" {
+				autoStartTags = append(autoStartTags, trimmed)
+			}
+		}
+	}
+
+	app := ui.NewApp(loader, tunnels, autoStartTags)
 	p := tea.NewProgram(
 		app,
 		tea.WithAltScreen(), // Use alternate screen buffer
