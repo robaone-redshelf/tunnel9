@@ -49,6 +49,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/sio2boss/tunnel9/main/to
 - Real-time monitoring of tunnel performance (throughput and latency)
 - Support for bastion/jump host configurations
 - Tag-based organization and filtering
+- Optional auto-start of tunnels by tag via CLI
 - Column-based sorting and organization
 
 ## Architecture Haiku
@@ -64,6 +65,11 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/sio2boss/tunnel9/main/to
 - YAML for configuration (`gopkg.in/yaml.v3`)
 
 ## Interface
+
+## Command Line Options
+
+- `--config=<path>` – Override the configuration file path.
+- `--auto-start=<tags>` – Comma-separated list of tags to start automatically on launch. Use `all` to start every configured tunnel.
 
 ### Controls
 

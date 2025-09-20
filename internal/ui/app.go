@@ -134,7 +134,7 @@ var (
 	controlsStyle = lipgloss.NewStyle()
 )
 
-func NewApp(loader *config.ConfigLoader, configs []config.TunnelConfig) *App {
+func NewApp(loader *config.ConfigLoader, configs []config.TunnelConfig, autoStartTags []string) *App {
 
 	tunnels := convertConfigsToRecords(configs)
 
@@ -212,10 +212,66 @@ func NewApp(loader *config.ConfigLoader, configs []config.TunnelConfig) *App {
 		isWideMode:   false,
 	}
 
+	app.autoStartTunnels(autoStartTags)
+
 	// Set initial rows
 	app.updateTableRows()
 
 	return app
+}
+
+func (a *App) autoStartTunnels(tags []string) {
+	if len(tags) == 0 {
+		return
+	}
+
+	normalized := make(map[string]struct{})
+	startAll := false
+
+	for _, tag := range tags {
+		trimmed := strings.TrimSpace(tag)
+		if trimmed == "" {
+			continue
+		}
+		if strings.EqualFold(trimmed, "all") {
+			startAll = true
+			continue
+		}
+		normalized[strings.ToLower(trimmed)] = struct{}{}
+	}
+
+	if !startAll && len(normalized) == 0 {
+		return
+	}
+
+	for i := range a.tunnels {
+		tunnelTag := strings.ToLower(strings.TrimSpace(a.tunnels[i].Config.Tag))
+		if !startAll {
+			if tunnelTag == "" {
+				continue
+			}
+			if _, ok := normalized[tunnelTag]; !ok {
+				continue
+			}
+		}
+
+		tunnel := a.manager.CreateTunnel(a.tunnels[i].ID, a.tunnels[i].Config)
+		if tunnel == nil {
+			a.tunnels[i].Status = "error"
+			a.tunnels[i].Metrics = "failed to start"
+			a.logError("Failed to initialize tunnel to %s", a.tunnels[i].Config.RemoteHost)
+			continue
+		}
+
+		a.tunnels[i].Status = "connecting"
+		a.tunnels[i].Metrics = "initializing"
+
+		if err := a.manager.StartTunnel(tunnel); err != nil {
+			a.tunnels[i].Status = "error"
+			a.tunnels[i].Metrics = fmt.Sprintf("start: %v", err)
+			a.logError("Failed to start tunnel to %s: %v", a.tunnels[i].Config.RemoteHost, err)
+		}
+	}
 }
 
 func (a *App) updateTableRows() {
